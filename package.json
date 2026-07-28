@@ -3,8 +3,14 @@
   "version": "0.1.0",
   "description": "Pure JS/TypeScript utilities for Nigerian React Native apps: Naira/kobo currency formatting, phone/network detection, USSD helpers, and NUBAN account number validation. Works with Expo (no native modules required).",
   "main": "dist/index.js",
-  "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
+  "type": "commonjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "files": [
     "dist"
   ],
@@ -27,7 +33,7 @@
     "fintech",
     "expo"
   ],
-  "author": "",
+  "author": "okewunmi-Abdulafeez",
   "license": "MIT",
   "peerDependencies": {
     "react-native": ">=0.64.0"
