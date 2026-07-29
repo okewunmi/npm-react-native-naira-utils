@@ -1,6 +1,6 @@
 # react-native-naira-utils
 
-[![CI](https://github.com/YOUR_GITHUB_USERNAME/react-native-naira-utils/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/react-native-naira-utils/actions/workflows/ci.yml)
+[![CI](https://github.com/okewunmi/react-native-naira-utils/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/react-native-naira-utils/actions/workflows/ci.yml)
 
 > Replace `YOUR_GITHUB_USERNAME` above once you push this to GitHub.
 
