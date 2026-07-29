@@ -1,7 +1,11 @@
 # react-native-naira-utils
 
+<<<<<<< HEAD
 [![CI](https://github.com/okewunmi/react-native-naira-utils/actions/workflows/ci.yml/badge.svg)](https://github.com/okewunmi/react-native-naira-utils/actions/workflows/ci.yml)
 
+=======
+[![CI](https://github.com/okewunmi/react-native-naira-utils/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/react-native-naira-utils/actions/workflows/ci.yml)
+>>>>>>> ec451900f98169713d80bbb870f7795184cc1f34
 
 
 Pure JS/TypeScript utilities for Nigerian React Native apps: Naira/kobo
