@@ -1,6 +1,6 @@
 {
   "name": "react-native-naira-utils",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pure JS/TypeScript utilities for Nigerian React Native apps: Naira/kobo currency formatting, phone/network detection, USSD helpers, and NUBAN account number validation. Works with Expo (no native modules required).",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
