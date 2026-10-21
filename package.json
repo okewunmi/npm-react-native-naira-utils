@@ -1,7 +1,38 @@
 {
   "name": "react-native-naira-utils",
-  "version": "0.1.2",
-  "description": "Pure JS/TypeScript utilities for Nigerian React Native apps: Naira/kobo currency formatting, phone/network detection, USSD helpers, and NUBAN account number validation. Works with Expo (no native modules required).",
+  "version": "0.4.0",
+  "description": "Pure JS/TypeScript utilities for Nigerian React Native apps: Naira/kobo formatting and exact money math, phone/network detection, USSD helpers, NUBAN validation and bank guessing, payment-fee and gross-up calculators, VAT/PAYE estimators, amount-in-words, masking and live amount-input formatting. Works with Expo (no native modules required).",
+  "keywords": [
+    "amount-in-words",
+    "bank-validation",
+    "expo",
+    "fintech",
+    "flutterwave",
+    "gross-up",
+    "kobo",
+    "naira",
+    "nigeria",
+    "nuban",
+    "paye",
+    "paystack",
+    "phone-validation",
+    "react-native",
+    "stamp-duty",
+    "ussd",
+    "vat",
+    "wht",
+    "withholding-tax"
+  ],
+  "author": "okewunmi-Abdulafeez",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/okewunmi/npm-react-native-naira-utils.git"
+  },
+  "homepage": "https://github.com/okewunmi/npm-react-native-naira-utils#readme",
+  "bugs": {
+    "url": "https://github.com/okewunmi/npm-react-native-naira-utils/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "commonjs",
@@ -12,29 +43,20 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "jest",
     "test:watch": "jest --watch",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:coverage": "jest --coverage"
   },
-  "keywords": [
-    "react-native",
-    "nigeria",
-    "naira",
-    "kobo",
-    "ussd",
-    "nuban",
-    "bank-validation",
-    "phone-validation",
-    "fintech",
-    "expo"
-  ],
-  "author": "okewunmi-Abdulafeez",
-  "license": "MIT",
   "peerDependencies": {
     "react-native": ">=0.64.0"
   },
@@ -50,6 +72,6 @@
     "typescript": "^5.4.5"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   }
 }

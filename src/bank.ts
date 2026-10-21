@@ -30,16 +30,23 @@
  *   changed by CBN/NIBSS; for production use, periodically re-sync
  *   against a live provider list (e.g. Paystack's /bank endpoint) rather
  *   than hardcoding indefinitely.
- * - Codes come in two shapes: classic 3-digit CBN sort codes (e.g. "058"
- *   for GTBank), and newer 5-6 digit NIP institution codes used by many
- *   microfinance banks and fintechs (e.g. "50211" for Kuda, "999992" for
- *   OPay). The checksum algorithm above is defined by CBN specifically
- *   for 3-digit codes — `isNUBANChecksumCompatible` tells you which
- *   entries that applies to. For 5-6 digit codes, don't rely on
- *   `isValidNUBAN`; use an online resolve-account-number API instead.
+ * - Codes come in three shapes: classic 3-digit CBN sort codes (e.g. "058"
+ *   for GTBank), 5-digit CBN codes for other financial institutions (OFIs,
+ *   e.g. "50211" for Kuda), and 6-digit institution codes (the form the
+ *   algorithm uses internally; some NIP/provider lists, such as "999992" for
+ *   OPay, are also 6 digits but are NOT in that internal form).
+ *   Per the CBN's revised NUBAN standard (2020), a 3-digit code is padded to
+ *   "000XXX" and a 5-digit OFI code to "9XXXXX", and the check digit is
+ *   computed over the 15 digits (6-digit code + 9-digit serial). This is
+ *   identical to the original 12-digit algorithm for all 3-digit codes.
+ *   Some fintechs (OPay, PalmPay and others) issue account numbers that mirror
+ *   the customer's phone number and do not pass the checksum, so a failed
+ *   check is not proof an account is invalid. Use an online
+ *   resolve-account-number API for real verification.
  */
 
-const NUBAN_WEIGHTS = [3, 7, 3, 3, 7, 3, 3, 7, 3, 3, 7, 3];
+// 15 weights: 6-digit institution code + 9-digit account serial number.
+const NUBAN_WEIGHTS = [3, 7, 3, 3, 7, 3, 3, 7, 3, 3, 7, 3, 3, 7, 3];
 
 export interface NigerianBank {
   code: string;
@@ -52,7 +59,7 @@ export interface NigerianBank {
  * a convenience default, and prefer syncing against a live provider list
  * for production use.
  */
-export const NIGERIAN_BANKS: NigerianBank[] = [
+const BANKS: NigerianBank[] = [
   { code: '044', name: 'Access Bank' },
   { code: '063', name: 'Access Bank (Diamond)' },
   { code: '035A', name: 'ALAT by WEMA' },
@@ -98,76 +105,109 @@ export const NIGERIAN_BANKS: NigerianBank[] = [
   { code: '057', name: 'Zenith Bank' },
 ];
 
+/** The bundled bank list. Frozen: copy it before modifying. */
+export const NIGERIAN_BANKS: ReadonlyArray<Readonly<NigerianBank>> = Object.freeze(
+  BANKS.map((bank) => Object.freeze({ ...bank }))
+);
+
 /**
- * Whether a bank's code follows the classic 3-digit CBN sort-code format
- * that `isValidNUBAN` / `computeNUBANCheckDigit` are defined for. Banks
- * with 5-6 digit NIP institution codes (many MFBs and fintechs) return
- * false here — checksum validation doesn't apply to them the same way.
+ * Normalize an institution code to the 6-digit form used by the NUBAN
+ * algorithm: "011" -> "000011", "50211" -> "950211", "000011" unchanged.
+ * Throws a TypeError for any other shape.
  */
-export function isNUBANChecksumCompatible(bank: NigerianBank): boolean {
-  return /^\d{3}$/.test(bank.code);
+function toSixDigitInstitutionCode(code: string, fn: string): string {
+  if (typeof code === 'string') {
+    if (/^\d{3}$/.test(code)) return `000${code}`;
+    if (/^\d{5}$/.test(code)) return `9${code}`;
+    if (/^\d{6}$/.test(code)) return code;
+  }
+  throw new TypeError(`${fn}: bankCode must be 3, 5 or 6 digits, got "${code}"`);
 }
 
 /**
- * Compute the NUBAN check digit for a given 3-digit bank code and
- * 9-digit account serial number.
+ * Whether the CBN NUBAN checksum is defined for this bank's code: classic
+ * 3-digit codes and 5-digit OFI codes. Non-numeric codes (e.g. "035A") and
+ * 6-digit provider/NIP codes such as "999992" return false.
  *
- * computeNUBANCheckDigit('011', '000001457') -> 9
+ * "Compatible" means the check is defined, not that every account the
+ * institution issues obeys it (see the notes at the top of this file).
+ */
+export function isNUBANChecksumCompatible(bank: Readonly<NigerianBank>): boolean {
+  return /^(\d{3}|\d{5})$/.test(bank.code);
+}
+
+/**
+ * Compute the NUBAN check digit for an institution code (3, 5 or 6 digits)
+ * and a 9-digit account serial number.
+ *
+ * computeNUBANCheckDigit('011', '000001457')   -> 9  (DMB, CBN example)
+ * computeNUBANCheckDigit('50547', '000021457') -> 9  (OFI, CBN example)
  */
 export function computeNUBANCheckDigit(bankCode: string, serialNumber: string): number {
-  if (!/^\d{3}$/.test(bankCode)) {
-    throw new TypeError(`computeNUBANCheckDigit: bankCode must be exactly 3 digits, got "${bankCode}"`);
-  }
-  if (!/^\d{9}$/.test(serialNumber)) {
+  const institution = toSixDigitInstitutionCode(bankCode, 'computeNUBANCheckDigit');
+  if (typeof serialNumber !== 'string' || !/^\d{9}$/.test(serialNumber)) {
     throw new TypeError(
       `computeNUBANCheckDigit: serialNumber must be exactly 9 digits, got "${serialNumber}"`
     );
   }
 
-  const digits = `${bankCode}${serialNumber}`.split('').map(Number);
+  const digits = `${institution}${serialNumber}`.split('').map(Number);
   const sum = digits.reduce((total, digit, i) => total + digit * NUBAN_WEIGHTS[i], 0);
-  const remainder = sum % 10;
-  const checkDigit = remainder === 0 ? 0 : 10 - remainder;
-
-  return checkDigit;
+  return (10 - (sum % 10)) % 10;
 }
 
 /**
  * Validate a 10-digit Nigerian NUBAN account number against a bank code
- * using the CBN check-digit algorithm.
+ * using the CBN check-digit algorithm (3-, 5- and 6-digit codes).
  *
  * isValidNUBAN('0016563228', '058') -> true  (well-formed for GTBank)
  * isValidNUBAN('0016563229', '058') -> false (check digit mismatch)
  *
- * Returns false (rather than throwing) for malformed input, so it's
- * safe to use directly in form-validation logic.
+ * This is a typo detector, not an identifier: roughly 1 in 10 random
+ * account numbers passes for any given bank. Returns false (rather than
+ * throwing) for malformed input, so it's safe in form-validation logic.
  */
 export function isValidNUBAN(accountNumber: string, bankCode: string): boolean {
   if (typeof accountNumber !== 'string' || !/^\d{10}$/.test(accountNumber)) return false;
-  if (typeof bankCode !== 'string' || !/^\d{3}$/.test(bankCode)) return false;
-
-  const serialNumber = accountNumber.slice(0, 9);
-  const providedCheckDigit = Number(accountNumber[9]);
-
   try {
-    const expectedCheckDigit = computeNUBANCheckDigit(bankCode, serialNumber);
-    return expectedCheckDigit === providedCheckDigit;
+    return (
+      computeNUBANCheckDigit(bankCode, accountNumber.slice(0, 9)) === Number(accountNumber[9])
+    );
   } catch {
     return false;
   }
 }
 
 /**
- * Look up a bank name from the starter bank list by its CBN code.
- * Returns undefined if not found in the bundled list.
+ * Candidate banks for an account number: every checksum-compatible bank
+ * whose code makes the check digit valid. Use it to pre-select or narrow a
+ * bank picker, never as proof of ownership: because the check is one digit,
+ * expect several candidates (about 10% of banks match any random number)
+ * and always confirm via a resolve-account-number API before paying.
+ * Returns [] for malformed input.
  */
-export function getBankByCode(code: string): NigerianBank | undefined {
-  return NIGERIAN_BANKS.find((bank) => bank.code === code);
+export function guessBanks(
+  accountNumber: string,
+  banks: ReadonlyArray<Readonly<NigerianBank>> = NIGERIAN_BANKS
+): NigerianBank[] {
+  if (typeof accountNumber !== 'string' || !/^\d{10}$/.test(accountNumber)) return [];
+  return banks
+    .filter((bank) => isNUBANChecksumCompatible(bank) && isValidNUBAN(accountNumber, bank.code))
+    .map((bank) => ({ ...bank }));
 }
 
 /**
- * Returns the bundled starter list of Nigerian banks.
+ * Look up a bank name from the starter bank list by its code.
+ * Returns undefined if not found in the bundled list.
+ */
+export function getBankByCode(code: string): NigerianBank | undefined {
+  const bank = NIGERIAN_BANKS.find((b) => b.code === code);
+  return bank ? { ...bank } : undefined;
+}
+
+/**
+ * Returns a copy of the bundled starter list of Nigerian banks.
  */
 export function getBankList(): NigerianBank[] {
-  return NIGERIAN_BANKS;
+  return NIGERIAN_BANKS.map((bank) => ({ ...bank }));
 }

@@ -72,3 +72,52 @@ describe('detectNetwork', () => {
     expect(detectNetwork('123')).toBe('unknown');
   });
 });
+
+describe('v0.2.0 regression: structural validation and human formats', () => {
+  it.each([
+    '+234 (0) 803 123 4567', '+2340803 123 4567', '002348031234567', '2348031234567',
+    '0803-123-4567', '(0803) 123 4567', '8031234567',
+  ])('accepts %j', (input) => {
+    expect(isValidNGPhone(input)).toBe(true);
+    expect(formatNGPhone(input)).toBe('08031234567');
+    expect(formatNGPhone(input, { format: 'international' })).toBe('+2348031234567');
+  });
+
+  it.each(['09111234567', '07075551234', '07025551234', '08041234567', '07091234567'])(
+    'accepts numbers on allocated prefixes the old table missed: %s',
+    (input) => {
+      expect(isValidNGPhone(input)).toBe(true);
+    }
+  );
+
+  it.each([
+    '0803123456', '080312345678', '0303123456', '05001234567', '02012345678', '', 'abc',
+    '+1 415 555 2671',
+  ])('rejects %j', (input) => {
+    expect(isValidNGPhone(input)).toBe(false);
+  });
+
+  it('detects networks on the newly covered prefixes', () => {
+    expect(detectNetwork('09111234567')).toBe('Airtel');
+    expect(detectNetwork('07075551234')).toBe('MTN');
+    expect(detectNetwork('07025551234')).toBe('MTN');
+    expect(detectNetwork('07035551234')).toBe('MTN');
+  });
+
+  it("labels other licensees' blocks as 'other' rather than guessing", () => {
+    expect(detectNetwork('08041234567')).toBe('other');
+    expect(detectNetwork('07091234567')).toBe('other');
+    expect(detectNetwork('07021234567')).toBe('other'); // 0702 but not 07025/07026
+  });
+
+  it("returns 'unknown' for a structurally valid number on an unlisted prefix", () => {
+    expect(isValidNGPhone('09171234567')).toBe(true);
+    expect(detectNetwork('09171234567')).toBe('unknown');
+  });
+
+  it('detects the same network for every accepted input format', () => {
+    ['+234 (0) 803 123 4567', '002348031234567', '8031234567'].forEach((n) =>
+      expect(detectNetwork(n)).toBe('MTN')
+    );
+  });
+});
